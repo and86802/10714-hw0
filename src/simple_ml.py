@@ -20,7 +20,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +48,25 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    with gzip.open(image_filename, 'rb') as f:
+        f.read(4)
+        # '>' denotes to big-endian, and 'I' denotes to unsigned int
+        num_samples = struct.unpack('>I', f.read(4))[0]
+        input_dim1 = struct.unpack('>I', f.read(4))[0]
+        input_dim2 = struct.unpack('>I', f.read(4))[0]
+        buf = f.read(num_samples * input_dim1 * input_dim2)
+        X = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+        X /= 255.0
+        X = X.reshape(num_samples, input_dim1 * input_dim2)
+    
+    with gzip.open(label_filename, 'rb') as f:
+        f.read(4)
+        num_samples = struct.unpack('>I', f.read(4))[0]
+        buf = f.read(num_samples)
+        y = np.frombuffer(buf, dtype=np.uint8)
+    
+    return (X, y)
+
     ### END YOUR CODE
 
 
@@ -68,7 +86,12 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    loss = np.log(np.sum(np.exp(Z), axis=1, keepdims=True))
+    row_index, y_index = np.arange(y.shape[0]), y
+    hy = Z[row_index, y_index]
+    hy = hy.reshape(hy.shape[0],1)
+    return np.mean(loss-hy)
+    
     ### END YOUR CODE
 
 
@@ -91,7 +114,15 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    for i in range(0, X.shape[0], batch):
+        X_batch = X[i:i+batch]
+        y_batch = y[i:i+batch]
+        exp_h = np.exp(X_batch@theta)
+        Z = exp_h/np.sum(exp_h, axis=1, keepdims=True)
+        y_one_hot = np.zeros_like(Z)
+        y_one_hot[np.arange(batch), y_batch] = 1
+        grad = X_batch.T@(Z-y_one_hot) / batch
+        theta -= lr * grad
     ### END YOUR CODE
 
 
@@ -118,7 +149,27 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    m = X.shape[0]
+    for i in range(0, m, batch):
+        X_batch = X[i:i+batch]
+        y_batch = y[i:i+batch]
+        Z1 = np.maximum(0, X_batch @ W1) 
+        
+        logits = Z1 @ W2
+        exp_h = np.exp(logits)
+        S = exp_h/np.sum(exp_h, axis=1, keepdims=True)
+        Iy= np.zeros_like(S)
+        Iy[np.arange(batch), y_batch] = 1
+        G2 = S - Iy
+
+        dZ1 = (Z1 > 0).astype(np.float32)
+        G1 = dZ1 * (G2 @ W2.T)
+
+        W1_grad = X_batch.T @ G1 / batch
+        W2_grad = Z1.T @ G2 /batch
+        W1 -= lr * W1_grad
+        W2 -= lr * W2_grad
+
     ### END YOUR CODE
 
 

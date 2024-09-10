@@ -33,7 +33,56 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+    std::vector<float> logits(batch * k, 0.0f);
+    std::vector<float> Z(batch * k, 0.0f);
+    std::vector<float> y_one_hot(batch * k, 0.0f);
+    std::vector<float> grad(n * k, 0.0f);
 
+    for (size_t i = 0; i < m; i += batch){
+        size_t batch_size = std::min(batch, m-i);
+
+        for (size_t j = 0; j < batch_size; j++){
+            for (size_t c = 0; c < k; c++){
+                logits[j * k + c] = 0;
+                for (size_t p = 0; p < n; p++){
+                    logits[j * k + c] += X[(i + j) * n + p] * theta[p * k + c];
+                }
+            }
+        }
+
+        for (size_t j = 0; j < batch_size; j++){
+            float sum_exp = 0;
+            for (size_t c = 0; c < k; c++){
+                Z[j * k + c] = exp(logits[j * k + c]);
+                sum_exp += Z[j * k + c];
+            }
+
+            for (size_t c = 0; c < k; c++){
+                Z[j * k + c] /= sum_exp;
+            }
+        }
+
+        std::fill(y_one_hot.begin(), y_one_hot.end(), 0.0f);
+        for (size_t j = 0; j < batch_size; j++){
+            y_one_hot[j * k + y[i + j]] = 1.0f;
+        }
+
+        std::fill(grad.begin(), grad.end(), 0.0f);
+        for (size_t p = 0; p < n; p++){
+            for (size_t c = 0; c < k; c++){
+                for (size_t j = 0; j < batch_size; j++){
+                    grad[p * k + c] += X[(i + j) * n + p] * (Z[j * k + c] - y_one_hot[j * k + c]);
+                }
+            }
+        }
+
+        for (size_t p = 0; p < n; p++){
+            for (size_t c = 0; c < k; c++){
+                theta[p * k + c] -= lr * grad[p * k + c] / batch_size;
+            }
+        }
+
+    }
     /// END YOUR CODE
 }
 
